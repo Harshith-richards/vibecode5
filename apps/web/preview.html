@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RidePrompt Preview</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #020617;
+        --card: #0f172a;
+        --muted: #94a3b8;
+        --text: #e2e8f0;
+        --accent: #06b6d4;
+      }
+      * { box-sizing: border-box; font-family: Inter, system-ui, sans-serif; }
+      body { margin: 0; background: var(--bg); color: var(--text); }
+      .wrap { max-width: 720px; margin: 0 auto; padding: 16px; }
+      .card { background: var(--card); border: 1px solid #334155; border-radius: 16px; padding: 16px; margin-bottom: 12px; }
+      h1 { margin: 0 0 8px; }
+      p { color: var(--muted); }
+      input { width: 100%; background: #1e293b; border: 1px solid #475569; color: var(--text); border-radius: 12px; padding: 12px; }
+      .btn { border: 0; border-radius: 10px; padding: 10px 12px; cursor: pointer; font-weight: 600; }
+      .primary { background: var(--accent); color: #06202a; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .uber { background: #000; color: #fff; }
+      .ola { background: #facc15; color: #111827; }
+      .maps { background: #334155; color: #fff; }
+      .cancel { background: transparent; border: 1px solid #64748b; color: #fff; }
+      .warn { color: #fda4af; }
+      .ok { color: #86efac; }
+      .row { display: flex; gap: 8px; margin-top: 10px; }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <section class="card">
+        <h1>RidePrompt – Preview</h1>
+        <p>Paste a Google Maps URL, then confirm and choose a provider. Never auto-booking.</p>
+      </section>
+
+      <section class="card">
+        <label for="url">Google Maps Link</label>
+        <input id="url" placeholder="https://maps.google.com/?q=12.9716,77.5946" />
+        <div class="row">
+          <button id="detect" class="btn primary">Detect Location</button>
+        </div>
+        <p id="status"></p>
+      </section>
+
+      <section class="card" id="confirm" hidden>
+        <h2 id="title">Book cab?</h2>
+        <p id="address"></p>
+        <p id="coords"></p>
+        <div class="grid">
+          <button id="uber" class="btn uber">Open in Uber</button>
+          <button id="ola" class="btn ola">Open in Ola</button>
+          <button id="maps" class="btn maps">Open in Google Maps</button>
+          <button id="cancel" class="btn cancel">Cancel</button>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const statusEl = document.getElementById('status');
+      const confirmEl = document.getElementById('confirm');
+      const urlEl = document.getElementById('url');
+      let parsed = null;
+
+      const parseCoordsFromText = (input) => {
+        const m = input.match(/(-?\d{1,2}\.\d+),\s*(-?\d{1,3}\.\d+)/);
+        return m ? { latitude: Number(m[1]), longitude: Number(m[2]) } : null;
+      };
+
+      const parseGoogleMapsLink = (rawUrl) => {
+        const u = new URL(rawUrl.trim());
+        const allowed = new Set(['maps.google.com', 'www.google.com', 'google.com', 'goo.gl']);
+        if (!allowed.has(u.hostname)) throw new Error('Not a Google Maps URL');
+
+        const queryCandidate = u.searchParams.get('q') || u.searchParams.get('query') || u.searchParams.get('destination') || '';
+        let coords = parseCoordsFromText(queryCandidate) || parseCoordsFromText(u.pathname) || parseCoordsFromText(rawUrl);
+        if (!coords) throw new Error('Could not extract coordinates');
+
+        return {
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          placeName: (u.searchParams.get('q') || 'Selected destination').split(',')[0],
+          address: queryCandidate || 'Address unavailable'
+        };
+      };
+
+      const buildUber = (loc) => `https://m.uber.com/ul/?action=setPickup&dropoff[latitude]=${loc.latitude}&dropoff[longitude]=${loc.longitude}&dropoff[nickname]=${encodeURIComponent(loc.placeName)}`;
+      const buildOla = (loc) => `https://book.olacabs.com/?drop_lat=${loc.latitude}&drop_lng=${loc.longitude}`;
+      const buildMaps = (loc) => `https://www.google.com/maps/search/?api=1&query=${loc.latitude},${loc.longitude}`;
+
+      document.getElementById('detect').onclick = () => {
+        statusEl.className = '';
+        try {
+          parsed = parseGoogleMapsLink(urlEl.value);
+          document.getElementById('title').textContent = `Book cab to ${parsed.placeName}?`;
+          document.getElementById('address').textContent = `Address: ${parsed.address}`;
+          document.getElementById('coords').textContent = `Coordinates: ${parsed.latitude.toFixed(5)}, ${parsed.longitude.toFixed(5)}`;
+          confirmEl.hidden = false;
+          statusEl.textContent = 'Location detected. Please confirm provider choice.';
+          statusEl.className = 'ok';
+        } catch (e) {
+          parsed = null;
+          confirmEl.hidden = true;
+          statusEl.textContent = e.message;
+          statusEl.className = 'warn';
+        }
+      };
+
+      const choose = (builder) => {
+        if (!parsed) return;
+        // Explicit user confirmation point: only button clicks can trigger deep links.
+        window.open(builder(parsed), '_blank', 'noopener,noreferrer');
+      };
+      document.getElementById('uber').onclick = () => choose(buildUber);
+      document.getElementById('ola').onclick = () => choose(buildOla);
+      document.getElementById('maps').onclick = () => choose(buildMaps);
+      document.getElementById('cancel').onclick = () => { confirmEl.hidden = true; statusEl.textContent = 'Canceled by user.'; statusEl.className = ''; };
+
+      urlEl.value = 'https://www.google.com/maps?q=12.9716,77.5946';
+    </script>
+  </body>
+</html>

@@ -86,6 +86,17 @@ npm run preview
 
 Deploy `dist/` output.
 
+### Quick local preview (no npm install)
+
+If your environment blocks npm registry access, you can still preview the confirmation-first flow:
+
+```bash
+cd apps/web
+python3 -m http.server 4173
+```
+
+Then open `http://127.0.0.1:4173/preview.html`.
+
 ### Mobile (Expo)
 
 ```bash
