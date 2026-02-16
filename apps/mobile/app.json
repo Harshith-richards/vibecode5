@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "RidePrompt",
+    "slug": "rideprompt",
+    "scheme": "rideprompt",
+    "platforms": ["ios", "android"],
+    "ios": {
+      "bundleIdentifier": "com.rideprompt.app"
+    },
+    "android": {
+      "package": "com.rideprompt.app"
+    }
+  }
+}
