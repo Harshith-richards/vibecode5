@@ -1,29 +1,34 @@
 import React, { useMemo, useState } from "react";
 import { Button, Linking, SafeAreaView, ScrollView, Text, TextInput, View } from "react-native";
+import { buildGoogleMapsDeepLink, buildOlaDeepLink, buildUberDeepLink, ParsedLocation } from "@rideprompt/shared";
 import { handleSharedLink } from "./src/shareHandler";
-import { buildGoogleMapsDeepLink, buildOlaDeepLink, buildUberDeepLink, ParsedLocation } from "../../packages/shared/src";
 
 export default function App() {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [location, setLocation] = useState<ParsedLocation | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [isResolving, setIsResolving] = useState(false);
 
   const preview = useMemo(() => {
     if (!location) return "";
     return `${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}`;
   }, [location]);
 
-  const detect = (url: string) => {
+  const detect = async (url: string) => {
     setError(null);
+    setIsResolving(true);
+
     try {
-      const parsed = handleSharedLink(url);
+      const parsed = await handleSharedLink(url);
       setLocation(parsed);
       setShowConfirm(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to parse link");
       setShowConfirm(false);
       setLocation(null);
+    } finally {
+      setIsResolving(false);
     }
   };
 
@@ -56,7 +61,7 @@ export default function App() {
           autoCapitalize="none"
           style={{ backgroundColor: "#1e293b", color: "white", borderRadius: 10, padding: 12 }}
         />
-        <Button title="Detect Location" onPress={() => detect(input)} />
+        <Button title={isResolving ? "Resolving..." : "Detect Location"} onPress={() => detect(input)} disabled={isResolving} />
 
         {error ? <Text style={{ color: "#fda4af" }}>{error}</Text> : null}
 

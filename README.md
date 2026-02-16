@@ -117,3 +117,39 @@ npm run start
 ```
 
 Use HTTPS + managed DB + TTL retention policy.
+
+
+## Expo SDK 51 Monorepo Android APK Guide (Windows)
+
+### 1) Clean and reinstall dependencies
+
+```powershell
+cd /d <repo>\apps\mobile
+rmdir /s /q node_modules
+if (Test-Path package-lock.json) { del package-lock.json }
+cd ..\..
+if (Test-Path node_modules) { rmdir /s /q node_modules }
+npm install
+cd apps\mobile
+npx expo install --fix
+npx expo-doctor
+```
+
+### 2) Run app locally with tunnel
+
+```powershell
+cd /d <repo>\apps\mobile
+npx expo start --tunnel --clear
+```
+
+### 3) Build signed APK with EAS
+
+```powershell
+npm install -g eas-cli
+cd /d <repo>\apps\mobile
+eas login
+eas build:configure
+eas build -p android --profile preview
+```
+
+The `preview` profile in `apps/mobile/eas.json` is configured for `buildType: "apk"`.

@@ -1,0 +1,14 @@
+{
+  "name": "rideprompt-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "services/*",
+    "extensions/*"
+  ],
+  "scripts": {
+    "mobile:start": "npm --workspace apps/mobile run start",
+    "mobile:doctor": "npm --workspace apps/mobile run doctor"
+  }
+}

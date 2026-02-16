@@ -1,16 +1,42 @@
 import { ParsedLocation } from "./types";
 
-const GOOGLE_MAPS_HOSTS = new Set([
+const GOOGLE_MAPS_HOSTS = [
   "maps.google.com",
   "www.google.com",
   "google.com",
   "goo.gl",
-]);
+  "maps.app.goo.gl",
+] as const;
+
+function isGoogleMapsHost(hostname: string): boolean {
+  if (GOOGLE_MAPS_HOSTS.includes(hostname as (typeof GOOGLE_MAPS_HOSTS)[number])) {
+    return true;
+  }
+
+  // Accept country domains such as maps.google.co.in
+  if (hostname.startsWith("maps.google.")) {
+    return true;
+  }
+
+  return false;
+}
 
 function parseCoordsFromText(input: string): { latitude: number; longitude: number } | null {
   const match = input.match(/(-?\d{1,2}\.\d+),\s*(-?\d{1,3}\.\d+)/);
   if (!match) return null;
-  return { latitude: Number(match[1]), longitude: Number(match[2]) };
+
+  const latitude = Number(match[1]);
+  const longitude = Number(match[2]);
+
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return null;
+  }
+
+  if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
+    return null;
+  }
+
+  return { latitude, longitude };
 }
 
 export function parseGoogleMapsLink(rawUrl: string): ParsedLocation {
@@ -21,7 +47,7 @@ export function parseGoogleMapsLink(rawUrl: string): ParsedLocation {
     throw new Error("Invalid URL");
   }
 
-  if (!GOOGLE_MAPS_HOSTS.has(url.hostname)) {
+  if (!isGoogleMapsHost(url.hostname)) {
     throw new Error("Not a Google Maps URL");
   }
 
@@ -48,7 +74,8 @@ export function parseGoogleMapsLink(rawUrl: string): ParsedLocation {
     throw new Error("Could not extract coordinates from Google Maps link");
   }
 
-  const placeName = url.searchParams.get("q")?.split(",")?.[0] || "Selected destination";
+  const qValue = url.searchParams.get("q") || "";
+  const placeName = qValue ? qValue.split(",")[0] : "Selected destination";
 
   return {
     originalUrl: rawUrl,
@@ -57,4 +84,13 @@ export function parseGoogleMapsLink(rawUrl: string): ParsedLocation {
     placeName,
     address: queryCandidate || undefined,
   };
+}
+
+export function isLikelyGoogleMapsShortLink(rawUrl: string): boolean {
+  try {
+    const url = new URL(rawUrl.trim());
+    return url.hostname === "maps.app.goo.gl" || (url.hostname === "goo.gl" && url.pathname.startsWith("/maps"));
+  } catch {
+    return false;
+  }
 }
