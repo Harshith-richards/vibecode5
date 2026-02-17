@@ -4,39 +4,31 @@ import {
   ParsedLocation,
 } from "@rideprompt/shared";
 
-const REQUEST_TIMEOUT_MS = 10000;
+const REQUEST_TIMEOUT_MS = 12000;
 
-async function fetchWithTimeout(input: string, init?: RequestInit): Promise<Response> {
+async function fetchWithTimeout(inputUrl: string): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
-    return await fetch(input, { ...init, redirect: "follow", signal: controller.signal });
+    return await fetch(inputUrl, {
+      method: "GET",
+      redirect: "follow",
+      signal: controller.signal,
+    });
   } finally {
     clearTimeout(timeout);
   }
 }
 
-export async function resolveGoogleMapsUrl(incoming: string): Promise<string> {
-  if (!isLikelyGoogleMapsShortLink(incoming)) {
-    return incoming;
-  }
-
+export async function resolveGoogleMapsUrl(inputUrl: string): Promise<string> {
   try {
-    const headResponse = await fetchWithTimeout(incoming, { method: "HEAD" });
-    if (headResponse.url) {
-      return headResponse.url;
-    }
-  } catch {
-    // Some Google endpoints block HEAD; fallback to GET below.
+    const response = await fetchWithTimeout(inputUrl);
+    return response.url || inputUrl;
+  } catch (error) {
+    console.error("Error resolving URL:", error);
+    return inputUrl;
   }
-
-  const getResponse = await fetchWithTimeout(incoming, { method: "GET" });
-  if (!getResponse.url) {
-    throw new Error("Could not resolve shortened Google Maps link");
-  }
-
-  return getResponse.url;
 }
 
 export async function handleSharedLink(incoming: string): Promise<ParsedLocation> {
@@ -45,6 +37,10 @@ export async function handleSharedLink(incoming: string): Promise<ParsedLocation
     throw new Error("No shared link received");
   }
 
-  const resolvedUrl = await resolveGoogleMapsUrl(trimmed);
-  return parseGoogleMapsLink(resolvedUrl);
+  let finalUrl = trimmed;
+  if (isLikelyGoogleMapsShortLink(trimmed)) {
+    finalUrl = await resolveGoogleMapsUrl(trimmed);
+  }
+
+  return parseGoogleMapsLink(finalUrl);
 }

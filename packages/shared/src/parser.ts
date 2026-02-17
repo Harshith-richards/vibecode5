@@ -21,12 +21,9 @@ function isGoogleMapsHost(hostname: string): boolean {
   return false;
 }
 
-function parseCoordsFromText(input: string): { latitude: number; longitude: number } | null {
-  const match = input.match(/(-?\d{1,2}\.\d+),\s*(-?\d{1,3}\.\d+)/);
-  if (!match) return null;
-
-  const latitude = Number(match[1]);
-  const longitude = Number(match[2]);
+function toCoords(lat: string, lng: string): { latitude: number; longitude: number } | null {
+  const latitude = Number(lat);
+  const longitude = Number(lng);
 
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
     return null;
@@ -37,6 +34,36 @@ function parseCoordsFromText(input: string): { latitude: number; longitude: numb
   }
 
   return { latitude, longitude };
+}
+
+// Supports q=lat,lng, @lat,lng and common data markers (!3dLAT!4dLNG)
+export function extractLatLng(input: string): { latitude: number; longitude: number } | null {
+  const qMatch = input.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (qMatch) {
+    return toCoords(qMatch[1], qMatch[2]);
+  }
+
+  const queryMatch = input.match(/[?&](?:query|destination)=(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (queryMatch) {
+    return toCoords(queryMatch[1], queryMatch[2]);
+  }
+
+  const atMatch = input.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (atMatch) {
+    return toCoords(atMatch[1], atMatch[2]);
+  }
+
+  const dataMatch = input.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+  if (dataMatch) {
+    return toCoords(dataMatch[1], dataMatch[2]);
+  }
+
+  const genericMatch = input.match(/(-?\d{1,2}\.\d+),\s*(-?\d{1,3}\.\d+)/);
+  if (genericMatch) {
+    return toCoords(genericMatch[1], genericMatch[2]);
+  }
+
+  return null;
 }
 
 export function parseGoogleMapsLink(rawUrl: string): ParsedLocation {
@@ -51,28 +78,16 @@ export function parseGoogleMapsLink(rawUrl: string): ParsedLocation {
     throw new Error("Not a Google Maps URL");
   }
 
-  // Attempt query patterns first (q=lat,lng / destination=lat,lng)
+  const coords = extractLatLng(rawUrl);
+  if (!coords) {
+    throw new Error("Could not extract coordinates from Google Maps link");
+  }
+
   const queryCandidate =
     url.searchParams.get("q") ||
     url.searchParams.get("query") ||
     url.searchParams.get("destination") ||
-    "";
-
-  let coords = parseCoordsFromText(queryCandidate);
-
-  // Path patterns like /@12.34,77.11,17z
-  if (!coords) {
-    coords = parseCoordsFromText(url.pathname);
-  }
-
-  // Data blob fallback
-  if (!coords) {
-    coords = parseCoordsFromText(rawUrl);
-  }
-
-  if (!coords) {
-    throw new Error("Could not extract coordinates from Google Maps link");
-  }
+    undefined;
 
   const qValue = url.searchParams.get("q") || "";
   const placeName = qValue ? qValue.split(",")[0] : "Selected destination";
@@ -82,7 +97,7 @@ export function parseGoogleMapsLink(rawUrl: string): ParsedLocation {
     latitude: coords.latitude,
     longitude: coords.longitude,
     placeName,
-    address: queryCandidate || undefined,
+    address: queryCandidate,
   };
 }
 

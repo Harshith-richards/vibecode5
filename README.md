@@ -55,6 +55,8 @@ See `packages/shared/src/deeplinks.ts`.
 
 All are generated dynamically from parsed coordinates.
 
+Short Google Maps links (e.g. `https://maps.app.goo.gl/...`) are first resolved via fetch redirect-following in mobile share handling before coordinate extraction.
+
 ## SECTION 5 – Optional Backend
 
 See `services/api/src/server.ts`.
