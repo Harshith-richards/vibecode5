@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "RidePrompt",
+    "slug": "rideprompt",
+    "scheme": "rideprompt",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "ios": {
+      "bundleIdentifier": "com.rideprompt.app",
+      "buildNumber": "1"
+    },
+    "android": {
+      "package": "com.rideprompt.app",
+      "versionCode": 1
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
+  }
+}
